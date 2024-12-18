@@ -6,12 +6,15 @@ import subprocess
 import sys
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+DEPOT_TOOLS_PATH = os.path.join(ROOT_DIR, 'vendor', 'depot_tools')
 SRC_URL = 'https://chromium.googlesource.com/chromium/src.git'
 
+sys.path.append(DEPOT_TOOLS_PATH)
+from gclient import GClient, OptionParser
+
 def add_depot_tools_to_path():
-  depot_tools_path = os.path.join(ROOT_DIR, 'vendor', 'depot_tools')
   os.environ['DEPOT_TOOLS_UPDATE'] = '0'
-  os.environ['PATH'] = depot_tools_path + os.pathsep + os.environ['PATH']
+  os.environ['PATH'] = DEPOT_TOOLS_PATH + os.pathsep + os.environ['PATH']
 
 def main():
   parser = argparse.ArgumentParser(description='Checkout Chromium source code')
@@ -33,12 +36,25 @@ def main():
   with open(os.path.join('.gclient'), 'a') as f:
     f.write('target_os = [ "linux", "mac", "win" ]\n')
 
+  # The cipd/gcs deps do not work with multi-os sync.
+  ignore_deps = [ 'cipd', 'gcs' ]
+
+  # Parse options like gclient.
+  parser = OptionParser()
+  parser.add_option('--no-history', action='store_true', default=True)
+  parser.add_option('--nohooks', action='store_true', default=True)
+  parser.add_option('--patch-refs', action='append', default=[])
+  parser.add_option('--ignore-dep-type', action='append', default=ignore_deps)
+  options, remaining_args = parser.parse_args([])
+
   # Checkout code.
-  subprocess.check_call([ 'gclient', 'sync', '--nohooks', '--no-history' ])
+  client = GClient.LoadCurrentConfig(options)
+  ret = client.RunOnDeps('update', remaining_args)
 
   # Execute some necessary hook steps.
   subprocess.check_call([ sys.executable,
                           os.path.join(ROOT_DIR, 'run_hooks.py') ])
+  return ret
 
 if __name__ == '__main__':
-  main()
+  sys.exit(main())

@@ -212,6 +212,7 @@ def main(argv):
   finally:
     archive.close()
 
+  print()
   return 0
 
 
