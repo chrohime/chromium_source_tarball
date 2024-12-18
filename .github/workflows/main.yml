@@ -12,7 +12,7 @@ on:
 
 env:
   VERSION: ${{ inputs.version && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || '124.0.6315.2') }}
-  REMOTE: ${{ (startsWith(github.ref, 'refs/tags/121') || startsWith(github.ref, 'refs/tags/120')) && 'goma' || 'reclient' }}
+  REMOTE:
 
 jobs:
   build:
@@ -47,9 +47,8 @@ jobs:
           retention-days: 1
 
   test:
-    if: inputs.version
     needs: [build]
-    runs-on: ${{ fromJson('{"linux":"ubuntu-22.04","mac":"macos-13","win":"windows-2022"}')[matrix.targetOs] }}
+    runs-on: ${{ fromJson('{"linux":"ubuntu-22.04","mac":"macos-15","win":"windows-2022"}')[matrix.targetOs] }}
 
     strategy:
       fail-fast: false
@@ -77,13 +76,6 @@ jobs:
 
       - name: Install python dependencies
         run: python -m pip install pyyaml httplib2
-
-      - name: Use XCode 15
-        if: runner.os == 'macOS'
-        run: |
-          XCODE_APP=$(find /Applications -maxdepth 1 -type d -name "Xcode_15.*" -print -quit)
-          echo 'Using' $XCODE_APP
-          sudo xcode-select --switch $XCODE_APP
 
       - name: Install Linux Dependencies
         if: runner.os == 'Linux'
@@ -114,7 +106,12 @@ jobs:
           printf "$SECRET_FILE_CONTENT" > ~/.goma_oauth2_config
           node goma.js
 
+      - name: Test GN gen
+        if: env.REMOTE == ''
+        run: python3 gn_gen.py --target-cpu ${{ matrix.targetCpu }}
+
       - name: Build Chromium
+        if: env.REMOTE != ''
         run: |
           python3 gn_gen.py --${{ env.REMOTE }} --target-cpu ${{ matrix.targetCpu }}
           python3 build.py
