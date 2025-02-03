@@ -16,7 +16,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04-arm
     continue-on-error: false
 
     steps:
@@ -41,7 +41,7 @@ jobs:
           ls -lh *.tar.xz
 
       - name: Upload Binary Files
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           path: '*.tar.xz'
           retention-days: 1
@@ -67,8 +67,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          repository: photoionization/build_chromium
-          submodules: recursive
+          repository: chrohime/build_chromium
 
       - uses: actions/setup-python@v3
         with:
@@ -85,11 +84,11 @@ jobs:
           /usr/bin/Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
 
       - name: Download Files
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Checkout Chromium
         shell: bash
-        run: python3 bootstrap.py --tarball-url 'file:///${{ github.workspace }}'"/artifact/chromium-$VERSION.tar.xz" --target-cpu ${{ matrix.targetCpu }}
+        run: python3 bootstrap.py --tarball-url 'file:///${{ github.workspace }}'"/artifact/chromium-$VERSION.tar.xz" --target-cpu ${{ matrix.targetCpu }} --verbose
 
       - name: Setup Reclient
         if: env.REMOTE == 'reclient'
@@ -147,7 +146,7 @@ jobs:
         run: ./find_release_notes.py $VERSION > body.html
 
       - name: Download Files
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Release
         uses: ncipollo/release-action@v1
